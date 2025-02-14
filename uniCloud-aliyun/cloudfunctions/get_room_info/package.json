@@ -1,0 +1,7 @@
+{
+  "name": "get_room_info",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

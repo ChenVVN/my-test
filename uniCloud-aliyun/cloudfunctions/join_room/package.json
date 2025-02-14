@@ -1,0 +1,7 @@
+{
+  "name": "join_room",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

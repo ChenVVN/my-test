@@ -1,0 +1,7 @@
+{
+  "name": "reate_room",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}
