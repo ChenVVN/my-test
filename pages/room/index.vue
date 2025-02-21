@@ -7,49 +7,204 @@
     <!-- 桌面积分展示 -->
     <view class="score-card">
       <text class="score-label">桌面积分</text>
-      <text class="score-value">234</text>
+      <text class="score-value">{{ roomData.current_score }}</text>
     </view>
-    <!-- 操作日志 -->
-    <view class="action-log">
-      <scroll-view class="log-list" scroll-y>
-        <view
-          v-for="(log, index) in logs"
-          :key="index"
-          class="log-item"
-          :class="log.type"
-        >
-          <text class="time">{{ log.time }}</text>
-          {{ log.content }}
-        </view>
-      </scroll-view>
-    </view>
+
     <!-- <view class="user-text">玩家列表</view> -->
     <view class="member-list">
       <view
-        v-for="(member, memberIndex) in 5"
+        v-for="(member, memberIndex) in roomData.members"
         :key="memberIndex"
         class="member-item"
       >
         <view class="order">{{ memberIndex + 1 }}</view>
         <view class="member-info">
-          <image class="member-avatar" src="/static/user-avatar.png" />
-          <text class="member-name">wnccc</text>
+          <image class="member-avatar" :src="member.avatar" />
+          <text class="member-name">{{ member.nickname }}</text>
         </view>
-        <view class="member-score">0</view>
+        <view class="member-score">{{ member.personal_score }}</view>
       </view>
+    </view>
+
+    <!-- 操作日志 -->
+    <view class="action-log">
+      <scroll-view class="log-list" scroll-y>
+        <view
+          v-for="(log, index) in roomData.logs"
+          :key="index"
+          class="log-item"
+        >
+          <text class="time">{{ formatTime(log.timestamp) }}</text>
+          {{ log.content }}
+        </view>
+      </scroll-view>
     </view>
 
     <!-- 底部操作栏 -->
     <view class="fixed-actions">
-      <button class="action-btn out" @click="handleOut">支 出</button>
-      <button class="action-btn in" @click="handleIn">收 回</button>
+      <button class="action-btn out" @click="openOut">支 出</button>
+      <button class="action-btn in" @click="openIn">收 回</button>
     </view>
+
+    <uni-popup ref="outPopup" type="bottom">
+      <view class="edit-box">
+        <view class="input-box">
+          <input
+            class="input"
+            v-model="outValue"
+            placeholder="输入支出数量"
+            type="number"
+          />
+          <button class="confirm-btn" @click="handleOut">确定</button>
+        </view>
+      </view>
+    </uni-popup>
+
+    <uni-popup ref="inPopup" type="bottom">
+      <view class="edit-box">
+        <view class="input-box">
+          <input
+            class="input"
+            v-model="inValue"
+            placeholder="输入收回数量"
+            type="number"
+          />
+
+          <view class="button-line">
+            <view class="all-in-box">全收</view>
+            <button class="confirm-btn" @click="handleIn">确定</button>
+          </view>
+        </view>
+      </view>
+    </uni-popup>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 // import { formatTime } from '@/utils/util';
+import { getCurrentUser } from "@/utils/auth";
+import dayjs from "dayjs";
+
+const roomWatcher = ref(null);
+
+const formatTime = (timestamp) => {
+  return dayjs(timestamp).format("HH:mm:ss");
+};
+// 初始化监听
+const initWatch = () => {
+  const db = uniCloud.database();
+
+  // 关闭旧监听
+  if (roomWatcher.value) {
+    console.log("[监听] 关闭旧连接");
+    roomWatcher.value.close();
+  }
+
+  console.log("[监听] 开始建立新连接，房间ID:", roomData.value._id);
+  roomWatcher.value = db
+    .collection("rooms")
+    .doc(roomData.value._id)
+    .watch({
+      onChange: (snapshot) => {
+        console.log(snapshot);
+
+        console.log("[监听成功] 收到变更:", {
+          id: snapshot.id,
+          type: snapshot.type,
+          doc: snapshot.docs[0],
+        });
+        handleDataChange(snapshot);
+      },
+      onError: (err) => {
+        console.error("[监听错误]", err);
+        uni.showToast({
+          title: "连接中断，正在重连...",
+          icon: "none",
+        });
+        setTimeout(initWatch, 5000);
+      },
+    });
+
+  console.log(roomWatcher.value);
+};
+
+// 处理数据变化
+const handleDataChange = (snapshot) => {
+  console.log("触发监听变更", snapshot);
+
+  if (snapshot.docs && snapshot.docs.length > 0) {
+    const newData = snapshot.docs[0];
+
+    // 调试日志
+    console.log("[监听触发] 变更类型:", snapshot.type);
+    console.log(
+      "[数据对比] 旧版本:",
+      roomData.value.version,
+      "新版本:",
+      newData.version
+    );
+
+    // 强制触发视图更新
+    roomData.value = {
+      ...newData,
+      // 保持响应式
+      members: [...newData.members],
+      logs: [...newData.logs],
+    };
+
+    // 滚动日志到底部
+    nextTick(() => {
+      const query = uni.createSelectorQuery().in(this);
+      query
+        .select(".log-list")
+        .boundingClientRect((data) => {
+          if (data) {
+            uni.pageScrollTo({
+              scrollTop: data.height,
+              duration: 300,
+            });
+          }
+        })
+        .exec();
+    });
+  }
+};
+
+// 显示操作通知
+const showOperationNotice = (log) => {
+  const user = roomData.value.members.find((m) => m.user_id === log.user_id);
+  const nickName = user?.nickname || "未知用户";
+
+  switch (log.type) {
+    case "join":
+      uni.showToast({
+        title: `${nickName} 加入了房间`,
+        icon: "none",
+      });
+      break;
+    case "out":
+      uni.showToast({
+        title: `${nickName} 支出了 ${log.amount}分`,
+        icon: "none",
+      });
+      break;
+    case "in":
+      uni.showToast({
+        title: `${nickName} 收回了 ${log.amount}分`,
+        icon: "none",
+      });
+      break;
+  }
+};
+// 错误处理
+const handleWatchError = (err) => {
+  console.error("实时监听失败:", err);
+  uni.showToast({
+    title: "实时连接中断，请刷新页面",
+    icon: "none",
+  });
+};
 
 const roomData = ref({
   room_number: "",
@@ -57,6 +212,74 @@ const roomData = ref({
   members: [],
   logs: [],
 });
+
+const outValue = ref("");
+const inValue = ref("");
+const outPopup = ref(null);
+const inPopup = ref(null);
+
+const userInfo = ref({});
+
+const openOut = () => {
+  outPopup.value.open("bottom");
+};
+
+const handleOut = async () => {
+  try {
+    const res = await uniCloud.callFunction({
+      name: "score_out",
+      data: {
+        roomId: roomData.value._id,
+        userInfo: userInfo.value,
+        amount: Number(outValue.value),
+      },
+    });
+
+    if (res.result.code === 200) {
+      uni.showToast({ title: "支出成功" });
+      // 强制刷新数据
+      await loadRoomData();
+      outPopup.value.close();
+    }
+  } catch (e) {
+    uni.showToast({ title: e.message, icon: "none" });
+  }
+};
+
+const openIn = () => {
+  inPopup.value.open("bottom");
+};
+
+const handleIn = async () => {
+  if (Number(inValue.value) > roomData.value.current_score) {
+    uni.showToast({
+      title: "收回积分应小于或等于当前桌面积分",
+      icon: "none",
+    });
+    return;
+  }
+  try {
+    const res = await uniCloud.callFunction({
+      name: "score_in",
+      data: {
+        roomId: roomData.value._id,
+        userInfo: userInfo.value,
+        amount: Number(inValue.value),
+      },
+    });
+
+    if (res.result.code === 200) {
+      inPopup.value.close();
+      // 强制刷新数据
+      await loadRoomData();
+    }
+    console.log("收回", res);
+
+    uni.showToast({ title: res.result.msg });
+  } catch (e) {
+    uni.showToast({ title: e.message, icon: "none" });
+  }
+};
 
 const roomNumber = ref("");
 
@@ -67,7 +290,17 @@ onMounted(async () => {
   roomNumber.value = params.room_number;
   console.log(roomNumber.value);
 
-  loadRoomData();
+  userInfo.value = getCurrentUser();
+
+  // 先加载数据再初始化监听
+  await loadRoomData();
+  console.log("房间数据加载完成:", roomData.value._id); // 调试点2
+
+  initWatch();
+});
+
+onUnmounted(() => {
+  roomWatcher.value && roomWatcher.value.close();
 });
 
 const loadRoomData = async () => {
@@ -114,7 +347,7 @@ const logs = [
 
 <style scoped lang="scss">
 .container {
-  padding: 30rpx;
+  padding: 0 30rpx;
   height: 100vh;
   padding-bottom: 160rpx; // 给底部操作栏留出空间
   background: #f8f9fa;
@@ -270,6 +503,7 @@ const logs = [
   border-radius: 12rpx;
   padding: 20rpx;
   height: 400rpx;
+  overflow-y: auto;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
 
   .log-list {
@@ -344,6 +578,55 @@ const logs = [
       color: #fff;
       box-shadow: 0 4rpx 12rpx rgba(255, 149, 0, 0.3);
     }
+  }
+}
+
+.edit-box {
+  background: #fff;
+  padding: 40rpx;
+  border-radius: 20rpx 20rpx 0 0;
+  margin-bottom: -24px;
+
+  .input {
+    height: 100rpx;
+    border: 2rpx solid #eee;
+    border-radius: 10rpx;
+    padding: 0 20rpx;
+    margin-bottom: 30rpx;
+  }
+  .button-line {
+    display: flex;
+    justify-content: space-between;
+
+    .all-in-box {
+      flex: 1;
+      height: 80rpx;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #e44a2f;
+      color: #fff;
+      border-radius: 50rpx;
+      margin-right: 10px;
+    }
+    .confirm-btn {
+      flex: 1;
+      margin-left: 10px;
+      background: #07c160;
+      color: #fff;
+      border-radius: 50rpx;
+      height: 80rpx;
+      line-height: 80rpx;
+    }
+  }
+
+  .confirm-btn {
+    margin-left: 10px;
+    background: #07c160;
+    color: #fff;
+    border-radius: 50rpx;
+    height: 80rpx;
+    line-height: 80rpx;
   }
 }
 </style>

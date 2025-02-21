@@ -165,6 +165,7 @@ const handleSubmit = async () => {
     }
 
     uni.showLoading();
+
     // 获取用户code
     const loginRes = await new Promise((resolve, reject) => {
       uni.login({
@@ -174,16 +175,22 @@ const handleSubmit = async () => {
       });
     });
 
-    // 使用uniCloud官方上传方式
-    const uploadRes = await uniCloud.uploadFile({
-      filePath: avatarUrl.value,
-      cloudPath: `avatars/${Date.now()}-${Math.random()
-        .toString(36)
-        .substr(2, 6)}.jpg`,
-    });
-    // 直接获取fileID
-    const cloudFileID = uploadRes.fileID;
-    if (!cloudFileID) throw new Error("头像上传失败");
+    let finalAvatar = avatarUrl.value;
+    // 仅当选择新头像时上传（排除默认头像和已上传头像）
+    if (
+      avatarUrl.value !== userInfo.value.avatar &&
+      !avatarUrl.value.startsWith("cloud:")
+    ) {
+      const uploadRes = await uniCloud.uploadFile({
+        filePath: avatarUrl.value,
+        cloudPath: `avatars/${Date.now()}-${Math.random()
+          .toString(36)
+          .substr(2, 6)}.jpg`,
+      });
+
+      if (!uploadRes.fileID) throw new Error("头像上传失败");
+      finalAvatar = uploadRes.fileID;
+    }
 
     // 提交完整数据到云函数
     const res = await uniCloud.callFunction({
@@ -191,7 +198,7 @@ const handleSubmit = async () => {
       data: {
         code: loginRes.code,
         nickname: nickname.value,
-        avatar: cloudFileID,
+        avatar: finalAvatar,
       },
     });
 
@@ -243,7 +250,10 @@ const roomInfo = ref(null);
 const joinRoom = async () => {
   const valid = validateRoomNumber(inputRoomNumber.value);
   if (valid !== true) {
-    return uni.showToast({ title: valid, icon: "none" });
+    return uni.showToast({
+      title: valid,
+      icon: "none",
+    });
   }
 
   try {
@@ -260,10 +270,16 @@ const joinRoom = async () => {
         url: `/pages/room/index?room_number=${inputRoomNumber.value}`,
       });
     } else {
-      uni.showToast({ title: res.result.msg, icon: "none" });
+      uni.showToast({
+        title: res.result.msg,
+        icon: "none",
+      });
     }
   } catch (e) {
-    uni.showToast({ title: "加入失败", icon: "none" });
+    uni.showToast({
+      title: "加入失败",
+      icon: "none",
+    });
   }
 };
 
@@ -277,8 +293,6 @@ const createRoom = async () => {
       userInfo: userInfo.value,
     },
   });
-
-  console.log(res);
 
   uni.hideLoading();
   uni.navigateTo({

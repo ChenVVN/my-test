@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "房间详情",
-  "usingComponents": {}
+  "usingComponents": {
+    "uni-popup": "../../uni_modules/uni-popup/components/uni-popup/uni-popup"
+  }
 }

@@ -1,7 +1,7 @@
 /* 水平间距 */
 /* 水平间距 */
 .container.data-v-8a71c708 {
-  padding: 30rpx;
+  padding: 0 30rpx;
   height: 100vh;
   padding-bottom: 160rpx;
   background: #f8f9fa;
@@ -129,6 +129,7 @@
   border-radius: 12rpx;
   padding: 20rpx;
   height: 400rpx;
+  overflow-y: auto;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
 }
 .action-log .log-list.data-v-8a71c708 {
@@ -193,4 +194,49 @@
   background: linear-gradient(135deg, #ff9500, #ff7f00);
   color: #fff;
   box-shadow: 0 4rpx 12rpx rgba(255, 149, 0, 0.3);
+}
+.edit-box.data-v-8a71c708 {
+  background: #fff;
+  padding: 40rpx;
+  border-radius: 20rpx 20rpx 0 0;
+  margin-bottom: -24px;
+}
+.edit-box .input.data-v-8a71c708 {
+  height: 100rpx;
+  border: 2rpx solid #eee;
+  border-radius: 10rpx;
+  padding: 0 20rpx;
+  margin-bottom: 30rpx;
+}
+.edit-box .button-line.data-v-8a71c708 {
+  display: flex;
+  justify-content: space-between;
+}
+.edit-box .button-line .all-in-box.data-v-8a71c708 {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #e44a2f;
+  color: #fff;
+  border-radius: 50rpx;
+  margin-right: 10px;
+}
+.edit-box .button-line .confirm-btn.data-v-8a71c708 {
+  flex: 1;
+  margin-left: 10px;
+  background: #07c160;
+  color: #fff;
+  border-radius: 50rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+}
+.edit-box .confirm-btn.data-v-8a71c708 {
+  margin-left: 10px;
+  background: #07c160;
+  color: #fff;
+  border-radius: 50rpx;
+  height: 80rpx;
+  line-height: 80rpx;
 }

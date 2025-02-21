@@ -8,7 +8,10 @@ exports.main = async (event, context) => {
   }
 
   if (!/^\d{6}$/.test(event.roomNumber)) {
-    return { code: 400, msg: "房间号必须为6位数字" };
+    return {
+      code: 400,
+      msg: "房间号必须为6位数字",
+    };
   }
 
   // 查询房间状态
@@ -39,18 +42,21 @@ exports.main = async (event, context) => {
 
   // 添加新成员
   const newMember = {
-    id: event.userInfo._id,
+    _id: event.userInfo._id,
     nickname: event.userInfo.nickname,
     avatar: event.userInfo.avatarUrl,
     join_time: Date.now(),
     role: "member",
+    personal_score: 0,
   };
 
   await rooms.doc(room._id).update({
     members: db.command.push(newMember),
+    version: db.command.inc(1), // 必须存在的版本号
+    last_modified: Date.now(), // 新增时间戳字段
     $push: {
       logs: {
-        type: "member_join",
+        type: "join",
         user_id: event.userInfo._id,
         timestamp: Date.now(),
         content: `${event.userInfo.nickname} 加入房间`,

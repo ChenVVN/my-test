@@ -9,22 +9,35 @@ exports.main = async (event) => {
 
     const roomNumber = parseInt(event.room_number);
 
-    // 查询房间信息
     const roomRes = await db
       .collection("rooms")
-      .where({
+      .aggregate()
+      .match({
         room_number: roomNumber,
-        status: 1, // 只查询开启状态的房间
+        status: 1,
       })
-      .field({
-        _id: true,
-        room_number: true,
-        current_score: true,
-        members: true,
-        // logs: db.command.slice(-20),
-        created_at: true,
+      .addFields({
+        // 确保logs字段存在且为数组
+        logs: {
+          $cond: {
+            if: { $isArray: "$logs" },
+            then: { $slice: ["$logs", -20] }, // 取最后20条
+            else: [], // 处理不存在的情况
+          },
+        },
       })
-      .get();
+      .project({
+        _id: 1,
+        room_number: 1,
+        current_score: 1,
+        members: 1,
+        logs: 1,
+        created_at: 1,
+        version: 1,
+        last_modified: 1,
+        status: 1,
+      })
+      .end();
 
     if (roomRes.data.length === 0) {
       return { code: 404, msg: "房间不存在或已关闭" };

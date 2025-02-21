@@ -66,19 +66,22 @@ const _sfc_main = {
             fail: reject
           });
         });
-        const uploadRes = await common_vendor.er.uploadFile({
-          filePath: avatarUrl.value,
-          cloudPath: `avatars/${Date.now()}-${Math.random().toString(36).substr(2, 6)}.jpg`
-        });
-        const cloudFileID = uploadRes.fileID;
-        if (!cloudFileID)
-          throw new Error("头像上传失败");
+        let finalAvatar = avatarUrl.value;
+        if (avatarUrl.value !== userInfo.value.avatar && !avatarUrl.value.startsWith("cloud:")) {
+          const uploadRes = await common_vendor.er.uploadFile({
+            filePath: avatarUrl.value,
+            cloudPath: `avatars/${Date.now()}-${Math.random().toString(36).substr(2, 6)}.jpg`
+          });
+          if (!uploadRes.fileID)
+            throw new Error("头像上传失败");
+          finalAvatar = uploadRes.fileID;
+        }
         const res = await common_vendor.er.callFunction({
           name: "login",
           data: {
             code: loginRes.code,
             nickname: nickname.value,
-            avatar: cloudFileID
+            avatar: finalAvatar
           }
         });
         if (res.result.code === 0) {
@@ -119,7 +122,10 @@ const _sfc_main = {
     const joinRoom = async () => {
       const valid = validateRoomNumber(inputRoomNumber.value);
       if (valid !== true) {
-        return common_vendor.index.showToast({ title: valid, icon: "none" });
+        return common_vendor.index.showToast({
+          title: valid,
+          icon: "none"
+        });
       }
       try {
         const res = await common_vendor.er.callFunction({
@@ -134,10 +140,16 @@ const _sfc_main = {
             url: `/pages/room/index?room_number=${inputRoomNumber.value}`
           });
         } else {
-          common_vendor.index.showToast({ title: res.result.msg, icon: "none" });
+          common_vendor.index.showToast({
+            title: res.result.msg,
+            icon: "none"
+          });
         }
       } catch (e) {
-        common_vendor.index.showToast({ title: "加入失败", icon: "none" });
+        common_vendor.index.showToast({
+          title: "加入失败",
+          icon: "none"
+        });
       }
     };
     const createRoom = async () => {
@@ -150,7 +162,6 @@ const _sfc_main = {
           userInfo: userInfo.value
         }
       });
-      common_vendor.index.__f__("log", "at pages/index/index.vue:281", res);
       common_vendor.index.hideLoading();
       common_vendor.index.navigateTo({
         url: `/pages/room/index?room_number=${res.result.data.room_number}`

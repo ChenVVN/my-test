@@ -1,0 +1,7 @@
+{
+  "name": "score_out",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

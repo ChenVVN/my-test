@@ -39,14 +39,25 @@ exports.main = async (event, context) => {
         data: new_info,
       };
     } else {
-      const userInfo = await userCollection
-        .where({
-          openid: openIdInfo.result.data.openid,
-        })
-        .update({
-          nickname,
-          avatar,
-        });
+      // 动态构建更新字段
+      const updateData = {};
+
+      // 仅当传入新昵称时更新
+      if (nickname && nickname !== userInfo.data[0].nickname) {
+        updateData.nickname = nickname;
+      }
+
+      // 仅当传入新头像时更新
+      if (avatar && avatar !== userInfo.data[0].avatar) {
+        updateData.avatar = avatar;
+      }
+
+      // 只有需要更新的字段才执行操作
+      if (Object.keys(updateData).length > 0) {
+        await userCollection
+          .where({ openid: openIdInfo.result.data.openid })
+          .update(updateData);
+      }
       return {
         code: 200,
         data: userInfo,
